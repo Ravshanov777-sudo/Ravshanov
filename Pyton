@@ -1,0 +1,89 @@
+import os
+import logging
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
+from compiler import compile_code
+from editor import CodeEditor
+
+# Log konfiguratsiyasi
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
+
+# Global o'zgaruvchilar
+user_sessions = {}  # Foydalanuvchi sessiyalari
+
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Start komandasi"""
+    user = update.effective_user
+    welcome_text = f"""
+🚀 *CodeLab - Telegramdagi Replit!*
+
+*Assalomu alaykum {user.first_name}!* 👨‍💻
+
+Bu bot orqali siz:
+• 📝 **Kod yozishingiz** mumkin
+• ▶️ **Kodni ishga tushirishingiz** mumkin
+• 📚 **30+ darsliklar** orqali o'rganishingiz mumkin
+• 🎯 **Masalalarni** yechishingiz mumkin
+• 💾 **Loyihalaringizni** saqlab qo'yishingiz mumkin
+
+*Tillar qo'llab-quvvatlanadi:*
+✅ Python 3.x
+✅ JavaScript (Node.js)
+✅ HTML/CSS
+✅ SQL
+
+*Boshlash uchun:* /editor yoki /code
+"""
+    
+    keyboard = [
+        [InlineKeyboardButton("📝 Kod Yozish", callback_data="start_editor")],
+        [InlineKeyboardButton("📚 Darsliklar", callback_data="lessons")],
+        [InlineKeyboardButton("🎯 Masalalar", callback_data="challenges")],
+        [InlineKeyboardButton("📂 Mening Loyihalarim", callback_data="my_projects")]
+    ]
+    
+    await update.message.reply_text(
+        welcome_text,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def code_editor_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Kod editorini ochish"""
+    user_id = update.effective_user.id
+    
+    # Yangi editor sessiyasi
+    user_sessions[user_id] = {
+        'editor': CodeEditor(),
+        'current_file': 'main.py',
+        'language': 'python'
+    }
+    
+    keyboard = [
+        [InlineKeyboardButton("🐍 Python", callback_data="lang_python"),
+         InlineKeyboardButton("☕ JavaScript", callback_data="lang_js")],
+        [InlineKeyboardButton("🌐 HTML", callback_data="lang_html"),
+         InlineKeyboardButton("🗃 SQL", callback_data="lang_sql")],
+        [InlineKeyboardButton("📂 Fayl nomi", callback_data="change_filename"),
+         InlineKeyboardButton("💾 Saqlash", callback_data="save_file")],
+        [InlineKeyboardButton("▶️ Ishga tushirish", callback_data="run_code"),
+         InlineKeyboardButton("🧹 Tozalash", callback_data="clear_code")]
+    ]
+    
+    editor_text = """
+📝 *Kod Editori*
+
+*Fayl:* `main.py`
+*Til:* Python
+
+Kodingizni shu yerga yozing va ▶️ Ishga tushirish tugmasini bosing.
+
+*Namuna kod:*
+```python
+print("Salom Dunyo!")
+for i in range(5):
+    print(f"Qadam: {i}")
